@@ -55,7 +55,7 @@ class ApiUpdateChannelError(ApiError):
     def __init__(self, msg="Channel update fail", debug="Channel update fail"):
         super(ApiUpdateChannelError, self).__init__(msg, debug)
 
-class ApiDeletehannelError(ApiError):
+class ApiDeleteChannelError(ApiError):
     value = ErrorCode.CHANNEL_DELETE_ERROR
     def __init__(self, msg="Channel delete fail", debug="Channel delete fail"):
         super(ApiDeleteChannelError, self).__init__(msg, debug)

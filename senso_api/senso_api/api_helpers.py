@@ -88,7 +88,10 @@ def create_channel(name):
 
 def update_channel_info(channel, name):
     url = URL_CHANNEL_UPDATE % (channel, API_KEY)
-    res = http_call(url, http_method="put")
+    request_data = {
+        "name": name,
+    }
+    res = http_call(url, request_data=request_data, http_method="put")
     return res
 
 def delete_channel(channel):
@@ -96,8 +99,3 @@ def delete_channel(channel):
     res = http_call(url, http_method="delete")
     return res
 
-def add_channel_sensor():
-    pass
-
-def update_channel_sensor():
-    pass

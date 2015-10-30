@@ -47,11 +47,11 @@ class HistoryFeeds(models.Model):
     channel = models.ForeignKey(Channel)
     sensor = models.ForeignKey(Sensor)
     value = models.DecimalField(max_digits=10, decimal_places=1)
-    create_time = models.DateTimeField()
-    last_entry_id = models.IntegerField()
+    create_time = models.DateTimeField(auto_now_add=True)
+    #last_entry_id = models.IntegerField()
 
     class Meta:
-        unique_together = ('channel', 'sensor', 'last_entry_id')
+        # unique_together = ('channel', 'sensor', 'last_entry_id')
         db_table = 'data_history_tab'
 
 

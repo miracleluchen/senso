@@ -90,16 +90,5 @@ class ChannelRequest(ApiJsonRequest):
         ('category', forms.IntegerField()),
     ]
 
-# class UpdateChannelRequest(ApiJsonRequest):
-    # fields = [
-        # ('name', forms.CharField(max_length=50)),
-        # ('max_temp', forms.DecimalField(max_digits=10, decimal_places=2)),
-        # ('min_temp', forms.DecimalField(max_digits=10, decimal_places=2)),
-        # ('valid_from', forms.TimeField()),
-        # ('valid_to', forms.TimeField()),
-        # ('category', forms.IntegerField()),
-        # ('channel', forms.IntegerField()),
-    # ]
-
 class ChannelDeleteRequest(ApiJsonRequest):
     fields = [('channel', forms.IntegerField())]

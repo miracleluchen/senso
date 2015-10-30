@@ -1,20 +1,24 @@
+import collections
+import datetime
+import decimal
 import exceptions
 import json
 import logging
 import traceback
-import datetime
+from collections import OrderedDict
+from decimal import Decimal, getcontext
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
+from django.db.models import F
+from django.db.utils import OperationalError
 from django.shortcuts import HttpResponse
+from django.utils.timezone import localtime, now
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic.base import View
-from django.utils.timezone import localtime
-import collections
-from collections import OrderedDict
-import api_helpers
+
 import view_helpers
-from senso_api import models, settings, logic
-from decimal import getcontext, Decimal
+from senso_api import logic, models, settings
+
 logger = logging.getLogger("main")
 
 class ApiView(View):
@@ -69,19 +73,17 @@ class FetchChannelFeedsView(ApiView):
         ret_data = {'channel':{}, 'feeds':{}}
         try:
             channel = models.Channel.objects.using("slave").get(channel_id=channel)
-            # read_key = channel.api_read_key
-            # ret_data = api_helpers.get_data_feeds(channel.channel_id, read_key, results=result, start=start, end=end, days=days)
 
             # process channel data
             sensor_setting = {}
             sensor_setting['name'] = channel.name
             sensor_setting['category'] = channel.category
             for sensor_data in models.AlertSetting.objects.using("slave").filter(channel=channel):
-                sensor_setting[sensor_data.sensor.name] = int(sensor_data.value)
+                sensor_setting[sensor_data.sensor.name] = int(sensor_data.value) if sensor_data.value is not None else None
                 sensor_setting['alert'] = sensor_data.abnormal >= settings.ALERT_LIMIT
                 if sensor_data.sensor.id == 1:
-                    sensor_setting['valid_from'] = sensor_data.valid_from.strftime("%H:%M:%S")
-                    sensor_setting['valid_to'] = sensor_data.valid_to.strftime("%H:%M:%S")
+                    sensor_setting['valid_from'] = logic.format_time(sensor_data.valid_from)
+                    sensor_setting['valid_to'] = logic.format_time(sensor_data.valid_to)
                     sensor_setting['min_value'] = int(sensor_data.min_value)
                     sensor_setting['max_value'] = int(sensor_data.max_value)
                 sensor_setting['updated_at'] = logic.format_date(sensor_data.update_time)
@@ -90,7 +92,8 @@ class FetchChannelFeedsView(ApiView):
             # process feeds
             getcontext().prec = 3
             data_feeds = collections.defaultdict(lambda:0)
-            for data in models.HistoryFeeds.objects.using("slave").filter(channel=channel, sensor_id=1):
+            datetime_filter = localtime(now()) - datetime.timedelta(days=1)
+            for data in models.HistoryFeeds.objects.using("slave").filter(channel=channel, sensor_id=1, create_time__gt=datetime_filter):
                 key = localtime(data.create_time).strftime("%Y%m%d%H")
                 if data_feeds[key] == 0:
                     data_feeds[key] = data.value
@@ -122,7 +125,6 @@ class ChannelListView(ApiView):
     def post_valid(self, api_request):
         api_reply = self.reply_class()
 
-        # channels = api_helpers.get_channel_list()
         channels = []
 
         channel_setting_dict = collections.defaultdict(list)
@@ -130,8 +132,8 @@ class ChannelListView(ApiView):
             setting_dict = collections.defaultdict(dict)
             setting_dict[alert.sensor.name]["max"] = str(alert.max_value)
             setting_dict[alert.sensor.name]["min"] = str(alert.min_value)
-            setting_dict[alert.sensor.name]["from"] = alert.valid_from.strftime("%H:%M:%S")
-            setting_dict[alert.sensor.name]["to"] = alert.valid_to.strftime("%H:%M:%S")
+            setting_dict[alert.sensor.name]["from"] = logic.format_time(alert.valid_from)
+            setting_dict[alert.sensor.name]["to"] = logic.format_time(alert.valid_to)
             setting_dict[alert.sensor.name]["value"] = str(alert.value)
             setting_dict[alert.sensor.name]["update_time"] = logic.format_date(alert.update_time)
             setting_dict[alert.sensor.name]["alert"] = alert.abnormal >= settings.ALERT_LIMIT
@@ -166,81 +168,79 @@ class ChannelCreateView(ApiView):
         category = cleaned_data['category']
         channel = cleaned_data['channel']
 
+        print api_request.cleaned_data
         try:
             cha = models.Channel.objects.get(channel_id=channel)
-            ret_data = api_helpers.update_channel_info(channel, name)
-            if ret_data['id']:
-                models.Channel.objects.filter(channel_id=channel).update(
-                    name = name,
-                    category = category
-                )
-                models.AlertSetting.objects.filter(channel=cha, sensor_id=1).update(
-                    min_value = min_temp,
-                    max_value = max_temp,
-                    valid_from = valid_from,
-                    valid_to = valid_to
-                )
-            else:
-                logger.error("update channel failed, api fail")
-                raise exceptions.ApiUpdateChannelError("API Error")
+            try:
+                with transaction.atomic():
+                    models.Channel.objects.filter(channel_id=channel).update(
+                        name = name,
+                        category = category
+                    )
+                    models.AlertSetting.objects.filter(channel=cha, sensor_id=1).update(
+                        min_value = min_temp,
+                        max_value = max_temp,
+                        valid_from = valid_from,
+                        valid_to = valid_to
+                    )
+            except Exception as e:
+                logger.error("update channel failed, Exception %s", e)
+                raise exceptions.ApiUpdateChannelError("Database Error")
 
         except models.Channel.DoesNotExist:
-            ret_data = api_helpers.create_channel(name)
+            api_read_key = logic.generate_key()
+            sensors = [sensor.id for sensor in models.Sensor.objects.all()]
+            print '123123'
+            try:
+                with transaction.atomic():
+                    cha = models.Channel.objects.create(
+                        name = name,
+                        description = '',
+                        category = category,
+                        channel_id = channel,
+                        api_write_key = '',
+                        api_read_key = api_read_key
+                    )
+                    print cha.id, cha.name
 
-            if ret_data['id']:
-                channel_id = ret_data['id']
-                api_read_key, api_write_key = '', ''
-                for api_key in ret_data['api_keys']:
-                    if api_key['write_flag']:
-                        api_write_key = api_key['api_key']
-                    else:
-                        api_read_key = api_key['api_key']
-                try:
-                    with transaction.atomic():
-                        cha = models.Channel.objects.create(
-                            name = name,
-                            description = '',
-                            category = category,
-                            channel_id = channel_id,
-                            api_write_key = api_write_key,
-                            api_read_key = api_read_key
-                        )
-
-                        models.AlertSetting.objects.create(
+                    obj_list = []
+                    for sensor in sensors:
+                        if sensor == 1:
+                            max_value = max_temp
+                            min_value = min_temp
+                        elif sensor == 2:
+                            max_value = 80
+                            min_value = 30
+                        elif sensor == 3:
+                            max_value = 100
+                            min_value = 0
+                        obj = models.AlertSetting(
                             channel = cha,
-                            sensor_id = 1, # hard code here, id 1 is sensor temperature
+                            sensor_id = sensor,
                             min_value = min_temp,
                             max_value = max_temp,
                             valid_from = valid_from,
                             valid_to = valid_to
                         )
-                        models.AlertSetting.objects.create(
-                            channel = cha,
-                            sensor_id = 2, # hard code here, id 1 is sensor temperature
-                            min_value = 30,
-                            max_value = 80,
-                            valid_from = valid_from,
-                            valid_to = valid_to
-                        )
-                        models.AlertSetting.objects.create(
-                            channel = cha,
-                            sensor_id = 3, # hard code here, id 1 is sensor temperature
-                            min_value = 0,
-                            max_value = 100,
-                            valid_from = valid_from,
-                            valid_to = valid_to
-                        )
+                        obj_list.append(obj)
+                    print obj_list
+                    models.AlertSetting.objects.bulk_create(obj_list)
+            except IntegrityError:
+                logger.error("duplicate channel name, %s", name)
+                raise exceptions.ApiCreateChannelError("Duplicated Name")
+            except Exception as e:
+                logger.error("create channel failed, exception: %s", e)
+                raise exceptions.ApiCreateChannelError("Database Error")
 
-                        ret_data.update({'api_key': api_write_key})
-                except Exception as e:
-                    logger.error("create channel failed, exception: %s", e)
-                    api_helpers.delete_channel(channel_id)
-                    raise exceptions.ApiCreateChannelError("Database Error")
-            else:
-                logger.error("create channel failed, api fail")
-                raise exceptions.ApiCreateChannelError("API Error")
+        ret_data = {
+            'name': name,
+            'min_temp': str(min_temp),
+            'max_temp': str(max_temp),
+            'valid_from': logic.format_time(valid_from),
+            'valid_to': logic.format_time(valid_to),
+            'category': category
+        }
 
-        ret_data.pop('api_keys')
         api_reply.set_field("data", ret_data)
         return api_reply
 
@@ -253,9 +253,6 @@ class ChannelDeleteView(ApiView):
         channel = api_request.cleaned_data['channel']
 
         api_reply = self.reply_class()
-        res = api_helpers.delete_channel(channel)
-        if not 'id' in res:
-            raise exceptions.ApiDeleteChannelError("API Error")
 
         try:
             with transaction.atomic():
@@ -268,3 +265,35 @@ class ChannelDeleteView(ApiView):
             raise exceptions.ApiDeleteChannelError("Database Error")
 
         return api_reply
+
+def update_feed(request):
+    channel_id = request.GET['key']
+    temperature =  request.GET['field1']
+    humidity =  request.GET.get('field2', None)
+    haze =  request.GET.get('field3', None)
+
+    value = decimal.Decimal(temperature)
+    try:
+        channel = models.Channel.objects.get(channel_id=channel_id)
+        obj = models.HistoryFeeds.objects.create(channel=channel, sensor_id=1, value=temperature)
+        currents = models.AlertSetting.objects.filter(channel=channel, sensor_id=1)
+        if currents.exists():
+            current = currents[0]
+            create_at = localtime(now())
+            if value > current.max_value or value < current.min_value:
+                currents.update(value = value,
+                                update_time = create_at,
+                                abnormal=F("abnormal")+1 )
+            else:
+                try:
+                    currents.update(value = value,
+                                    update_time = create_at,
+                                    abnormal = F("abnormal") - 1)
+                except OperationalError:
+                    currents.update(value = value,
+                                    update_time = create_at,
+                                    abnormal = 0)
+
+        return HttpResponse(obj.id)
+    except models.Channel.DoesNotExist:
+        return HttpResponse("0")
