@@ -22,11 +22,11 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 SECRET_KEY = '*3nn3vruj+&o+h&(0vcnk=33aiglj&%qy%ztu#-rz17vljlj%w'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 TEMPLATE_DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['10.2.64.115']
 
 
 # Application definition
@@ -58,45 +58,24 @@ WSGI_APPLICATION = 'senso_api.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/1.6/ref/settings/#databases
 
-if DEBUG:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': 'digital_env',
-            'USER': 'root',
-            'PASSWORD': '123456',
-            'HOST': 'localhost',
-            'PORT': '3306',
-        },
-        'slave': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': 'digital_env',
-            'USER': 'root',
-            'PASSWORD': '123456',
-            'HOST': 'localhost',
-            'PORT': '3306',
-        }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'digital_env',
+        'USER': 'root',
+        'PASSWORD': '123456',
+        'HOST': 'localhost',
+        'PORT': '3306',
+    },
+    'slave': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'digital_env',
+        'USER': 'root',
+        'PASSWORD': '123456',
+        'HOST': 'localhost',
+        'PORT': '3306',
     }
-
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': 'digital_env',
-            'USER': 'root',
-            'PASSWORD': 'BCnYEFdSZn9ZZoN0pojn',
-            'HOST': '',
-            'PORT': '3306',
-        },
-        'slave': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': 'digital_env',
-            'USER': 'root',
-            'PASSWORD': 'BCnYEFdSZn9ZZoN0pojn',
-            'HOST': '',
-            'PORT': '3306',
-        }
-    }
+}
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.6/topics/i18n/
