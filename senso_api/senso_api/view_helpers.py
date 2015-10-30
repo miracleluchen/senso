@@ -85,8 +85,8 @@ class ChannelRequest(ApiJsonRequest):
         ('name', forms.CharField(max_length=50)),
         ('max_temp', forms.DecimalField(max_digits=10, decimal_places=2)),
         ('min_temp', forms.DecimalField(max_digits=10, decimal_places=2)),
-        ('valid_from', forms.TimeField()),
-        ('valid_to', forms.TimeField()),
+        ('valid_from', forms.TimeField(required=False)),
+        ('valid_to', forms.TimeField(required=False)),
         ('category', forms.IntegerField()),
     ]
 

@@ -190,7 +190,6 @@ class ChannelCreateView(ApiView):
         except models.Channel.DoesNotExist:
             api_read_key = logic.generate_key()
             sensors = [sensor.id for sensor in models.Sensor.objects.all()]
-            print '123123'
             try:
                 with transaction.atomic():
                     cha = models.Channel.objects.create(
@@ -217,8 +216,8 @@ class ChannelCreateView(ApiView):
                         obj = models.AlertSetting(
                             channel = cha,
                             sensor_id = sensor,
-                            min_value = min_temp,
-                            max_value = max_temp,
+                            min_value = min_value,
+                            max_value = max_value,
                             valid_from = valid_from,
                             valid_to = valid_to
                         )
