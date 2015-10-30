@@ -16,7 +16,7 @@ URL_FETCH_FEED = 'channels/%s/feeds.json?key=%s'
 
 # channel api
 URL_CHANNEL_ADD = 'channels.json'
-URL_CHANNEL_UPDATE = ''
+URL_CHANNEL_UPDATE = 'channels/%s.json?key=%s'
 URL_CHANNEL_DELETE = 'channels/%s.json?key=%s'
 URL_CHANNEL_LIST = 'channels.json?api_key=%s' % API_KEY
 
@@ -86,8 +86,10 @@ def create_channel(name):
     channel = http_call(url, request_data)
     return channel
 
-def update_channel_info():
-    pass
+def update_channel_info(channel, name):
+    url = URL_CHANNEL_UPDATE % (channel, API_KEY)
+    res = http_call(url, http_method="put")
+    return res
 
 def delete_channel(channel):
     url = URL_CHANNEL_DELETE % (channel, API_KEY)

@@ -75,10 +75,13 @@ class FetchChannelFeedsView(ApiView):
             # process channel data
             sensor_setting = {}
             sensor_setting['name'] = channel.name
+            sensor_setting['category'] = channel.category
             for sensor_data in models.AlertSetting.objects.using("slave").filter(channel=channel):
                 sensor_setting[sensor_data.sensor.name] = int(sensor_data.value)
                 sensor_setting['alert'] = sensor_data.abnormal >= settings.ALERT_LIMIT
                 if sensor_data.sensor.id == 1:
+                    sensor_setting['valid_from'] = sensor_data.valid_from.strftime("%H:%M:%S")
+                    sensor_setting['valid_to'] = sensor_data.valid_to.strftime("%H:%M:%S")
                     sensor_setting['min_value'] = int(sensor_data.min_value)
                     sensor_setting['max_value'] = int(sensor_data.max_value)
                 sensor_setting['updated_at'] = logic.format_date(sensor_data.update_time)
@@ -161,66 +164,86 @@ class ChannelCreateView(ApiView):
         valid_from = cleaned_data['valid_from']
         valid_to = cleaned_data['valid_to']
         category = cleaned_data['category']
+        channel = cleaned_data['channel']
 
-        channel = api_helpers.create_channel(name)
-        if channel['id']:
-            channel_id = channel['id']
-            api_read_key, api_write_key = '', ''
-            for api_key in channel['api_keys']:
-                if api_key['write_flag']:
-                    api_write_key = api_key['api_key']
-                else:
-                    api_read_key = api_key['api_key']
-            try:
-                with transaction.atomic():
-                    cha = models.Channel.objects.create(
-                        name = name,
-                        description = '',
-                        category = category,
-                        channel_id = channel_id,
-                        api_write_key = api_write_key,
-                        api_read_key = api_read_key
-                    )
+        try:
+            cha = models.Channel.objects.get(channel_id=channel)
+            ret_data = api_helpers.update_channel_info(channel, name)
+            if ret_data['id']:
+                models.Channel.objects.filter(channel_id=channel).update(
+                    name = name,
+                    category = category
+                )
+                models.AlertSetting.objects.filter(channel=cha, sensor_id=1).update(
+                    min_value = min_temp,
+                    max_value = max_temp,
+                    valid_from = valid_from,
+                    valid_to = valid_to
+                )
+            else:
+                logger.error("update channel failed, api fail")
+                raise exceptions.ApiUpdateChannelError("API Error")
 
-                    models.AlertSetting.objects.create(
-                        channel = cha,
-                        sensor_id = 1, # hard code here, id 1 is sensor temperature
-                        min_value = min_temp,
-                        max_value = max_temp,
-                        valid_from = valid_from,
-                        valid_to = valid_to
-                    )
-                    models.AlertSetting.objects.create(
-                        channel = cha,
-                        sensor_id = 2, # hard code here, id 1 is sensor temperature
-                        min_value = 30,
-                        max_value = 80,
-                        valid_from = valid_from,
-                        valid_to = valid_to
-                    )
-                    models.AlertSetting.objects.create(
-                        channel = cha,
-                        sensor_id = 3, # hard code here, id 1 is sensor temperature
-                        min_value = 0,
-                        max_value = 100,
-                        valid_from = valid_from,
-                        valid_to = valid_to
-                    )
+        except models.Channel.DoesNotExist:
+            ret_data = api_helpers.create_channel(name)
 
-                    channel.update({'api_key': api_write_key})
-                    channel.pop('api_keys')
-            except Exception as e:
-                logger.error("create channel failed, exception: %s", e)
-                api_helpers.delete_channel(channel_id)
-                raise exceptions.ApiCreateChannelError("Database Error")
-            api_reply.set_field("data", channel)
-        else:
-            logger.error("create channel failed, api fail")
-            raise exceptions.ApiCreateChannelError("API Error")
+            if ret_data['id']:
+                channel_id = ret_data['id']
+                api_read_key, api_write_key = '', ''
+                for api_key in ret_data['api_keys']:
+                    if api_key['write_flag']:
+                        api_write_key = api_key['api_key']
+                    else:
+                        api_read_key = api_key['api_key']
+                try:
+                    with transaction.atomic():
+                        cha = models.Channel.objects.create(
+                            name = name,
+                            description = '',
+                            category = category,
+                            channel_id = channel_id,
+                            api_write_key = api_write_key,
+                            api_read_key = api_read_key
+                        )
 
+                        models.AlertSetting.objects.create(
+                            channel = cha,
+                            sensor_id = 1, # hard code here, id 1 is sensor temperature
+                            min_value = min_temp,
+                            max_value = max_temp,
+                            valid_from = valid_from,
+                            valid_to = valid_to
+                        )
+                        models.AlertSetting.objects.create(
+                            channel = cha,
+                            sensor_id = 2, # hard code here, id 1 is sensor temperature
+                            min_value = 30,
+                            max_value = 80,
+                            valid_from = valid_from,
+                            valid_to = valid_to
+                        )
+                        models.AlertSetting.objects.create(
+                            channel = cha,
+                            sensor_id = 3, # hard code here, id 1 is sensor temperature
+                            min_value = 0,
+                            max_value = 100,
+                            valid_from = valid_from,
+                            valid_to = valid_to
+                        )
+
+                        ret_data.update({'api_key': api_write_key})
+                except Exception as e:
+                    logger.error("create channel failed, exception: %s", e)
+                    api_helpers.delete_channel(channel_id)
+                    raise exceptions.ApiCreateChannelError("Database Error")
+            else:
+                logger.error("create channel failed, api fail")
+                raise exceptions.ApiCreateChannelError("API Error")
+
+        ret_data.pop('api_keys')
+        api_reply.set_field("data", ret_data)
         return api_reply
 
-class ChannelUpdateView(ApiView):pass
 
 class ChannelDeleteView(ApiView):
     request_class = view_helpers.ChannelDeleteRequest
