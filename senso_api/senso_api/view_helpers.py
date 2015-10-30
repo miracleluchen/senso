@@ -89,3 +89,5 @@ class ChannelRequest(ApiJsonRequest):
         ('category', forms.IntegerField()),
     ]
 
+class ChannelDeleteRequest(ApiJsonRequest):
+    fields = [('channel', forms.IntegerField())]

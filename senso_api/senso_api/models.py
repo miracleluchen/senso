@@ -31,12 +31,12 @@ class Sensor(models.Model):
 class AlertSetting(models.Model):
     channel = models.ForeignKey(Channel)
     sensor = models.ForeignKey(Sensor)
-    min_value = models.DecimalField(max_digits=10, decimal_places=2)
-    max_value = models.DecimalField(max_digits=10, decimal_places=2)
+    min_value = models.DecimalField(max_digits=10, decimal_places=1)
+    max_value = models.DecimalField(max_digits=10, decimal_places=1)
     valid_from = models.TimeField()
     valid_to = models.TimeField()
     abnormal = models.PositiveIntegerField(default=0)
-    value = models.DecimalField(max_digits=10, decimal_places=2)
+    value = models.DecimalField(max_digits=10, decimal_places=1)
     update_time = models.DateTimeField()
 
     class Meta:
@@ -46,10 +46,12 @@ class AlertSetting(models.Model):
 class HistoryFeeds(models.Model):
     channel = models.ForeignKey(Channel)
     sensor = models.ForeignKey(Sensor)
-    value = models.DecimalField(max_digits=10, decimal_places=2)
+    value = models.DecimalField(max_digits=10, decimal_places=1)
     create_time = models.DateTimeField()
+    last_entry_id = models.IntegerField()
 
     class Meta:
+        unique_together = ('channel', 'sensor', 'last_entry_id')
         db_table = 'data_history_tab'
 
 

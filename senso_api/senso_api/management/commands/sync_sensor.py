@@ -38,16 +38,22 @@ class Command(BaseCommand):
             if 'feeds' in feed_data and len(feed_data['feeds']) > 0:
                 feed = feed_data['feeds'][0]
                 create_at = feed['created_at']
+                entry_id = feed['entry_id']
                 for key, value in feed.iteritems():
                     if key in field_dict:
                         sensor_name = field_dict[key]
-                        models.HistoryFeeds.objects.create(
-                            channel = channel,
-                            sensor_id = sensor_dict[sensor_name],
-                            value = value,
-                            create_time = create_at
-                        )
-                        logger.info("create history data: %s, %s, %s, %s", channel.name, sensor_dict[sensor_name], value, create_at)
+                        try:
+                            models.HistoryFeeds.objects.create(
+                                channel = channel,
+                                sensor_id = sensor_dict[sensor_name],
+                                value = value,
+                                create_time = create_at,
+                                last_entry_id = entry_id
+                            )
+                            logger.info("create history data: %s, %s, %s, %s", channel.name, sensor_dict[sensor_name], value, create_at)
+                        except Exception as e:
+                            logger.info("fetch data failed, %s, %s, %s, %s", channel.name, sensor_dict[sensor_name], value, create_at)
+                            continue
 
                         if not value:
                             continue

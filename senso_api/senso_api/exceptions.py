@@ -7,6 +7,8 @@ class ErrorCode(object):
     HTTP_METHOD_NOT_ALLOWED = 3
     CHANNEL_NOT_FOUND = 4
     CHANNEL_CREATE_ERROR = 5
+    CHANNEL_UPDATE_ERROR = 6
+    CHANNEL_DELETE_ERROR = 7
 
 class ApiError(Exception):
     def __str__(self):
@@ -47,5 +49,15 @@ class ApiCreateChannelError(ApiError):
     value = ErrorCode.CHANNEL_CREATE_ERROR
     def __init__(self, msg="Channel create fail", debug="Channel create fail"):
         super(ApiCreateChannelError, self).__init__(msg, debug)
+
+class ApiUpdateChannelError(ApiError):
+    value = ErrorCode.CHANNEL_UPDATE_ERROR
+    def __init__(self, msg="Channel update fail", debug="Channel update fail"):
+        super(ApiUpdateChannelError, self).__init__(msg, debug)
+
+class ApiDeletehannelError(ApiError):
+    value = ErrorCode.CHANNEL_DELETE_ERROR
+    def __init__(self, msg="Channel delete fail", debug="Channel delete fail"):
+        super(ApiDeleteChannelError, self).__init__(msg, debug)
 
 
