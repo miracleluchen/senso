@@ -207,19 +207,24 @@ class ChannelCreateView(ApiView):
                         if sensor == 1:
                             max_value = max_temp
                             min_value = min_temp
+                            value = 25
                         elif sensor == 2:
                             max_value = 80
                             min_value = 30
+                            value = 50
                         elif sensor == 3:
                             max_value = 100
                             min_value = 0
+                            value = 76
                         obj = models.AlertSetting(
                             channel = cha,
                             sensor_id = sensor,
                             min_value = min_value,
                             max_value = max_value,
                             valid_from = valid_from,
-                            valid_to = valid_to
+                            valid_to = valid_to,
+                            value = value,
+                            update_time = localtime(now())
                         )
                         obj_list.append(obj)
                     print obj_list
