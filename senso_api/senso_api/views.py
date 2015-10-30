@@ -95,6 +95,7 @@ class ChannelListView(ApiView):
             setting_dict[alert.sensor.name]["to"] = alert.valid_to.strftime("%H:%M:%S")
             setting_dict[alert.sensor.name]["value"] = str(alert.value)
             setting_dict[alert.sensor.name]["update_time"] = alert.update_time.strftime('%Y-%m-%d %H:%M:%S')
+            setting_dict[alert.sensor.name]["alert"] = alert.abnormal >= settings.ALERT_LIMIT
             channel_setting_dict[alert.channel.id].append(setting_dict)
 
         print channel_setting_dict
@@ -105,7 +106,7 @@ class ChannelListView(ApiView):
             channel_dict['api_key'] = channel.api_write_key
             channel_dict['category'] = channel.get_category_display()
             channel_dict['id'] = channel.channel_id
-            channel_dict['settings'] = channel_setting_dict[channel.id]
+            channel_dict['status'] = channel_setting_dict[channel.id]
 
             channels.append(channel_dict)
 
@@ -169,3 +170,4 @@ class ChannelCreateView(ApiView):
         return api_reply
 
 class ChannelUpdateView(ApiView):pass
+

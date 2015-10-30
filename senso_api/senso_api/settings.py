@@ -37,6 +37,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
+    'senso_api',
 )
 
 MIDDLEWARE_CLASSES = (
@@ -122,6 +123,12 @@ LOGGING = {
             'filename': '/var/log/senso/main.log.%s' % (datetime.datetime.now().date(),),
             'formatter':'standard',
         },
+        'file_sync': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': '/var/log/senso/sync.log.%s' % (datetime.datetime.now().date(),),
+            'formatter':'standard',
+        },
     },
     'loggers': {
         'main': {
@@ -129,6 +136,14 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'sync': {
+            'handlers': ['file_sync'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+
     },
 }
 
+UPDATE_FREQUENCY = 300
+ALERT_LIMIT = 6

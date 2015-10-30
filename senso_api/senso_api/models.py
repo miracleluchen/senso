@@ -35,7 +35,7 @@ class AlertSetting(models.Model):
     max_value = models.DecimalField(max_digits=10, decimal_places=2)
     valid_from = models.TimeField()
     valid_to = models.TimeField()
-    abnormal = models.IntegerField(default=0)
+    abnormal = models.PositiveIntegerField(default=0)
     value = models.DecimalField(max_digits=10, decimal_places=2)
     update_time = models.DateTimeField()
 

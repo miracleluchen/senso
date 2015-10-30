@@ -45,10 +45,12 @@ def http_call(url, request_data=None, host=URL_DOMAIN, timeout=60, http_method="
                      request_data, e)
         raise exceptions.ApiUnexpectedError("Http failed.")
 
-def get_data_feeds(channel, api_key, start=None, end=None, days=None, results=None):
+def get_data_feeds(channel, api_key, start=None, end=None, days=None, results=None, latest=False):
     url = URL_FETCH_FEED % (channel, api_key)
 
-    optional = '&median=10'
+    optional = '&timezone=Asia/Singapore'
+    if not latest:
+        optional = '&median=10'
     if start is not None:
         optional += '&start=' + start.strftime("%Y%m%d %H:%M:%S")
     if end is not None:
