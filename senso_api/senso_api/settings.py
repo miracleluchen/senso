@@ -22,7 +22,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 SECRET_KEY = '*3nn3vruj+&o+h&(0vcnk=33aiglj&%qy%ztu#-rz17vljlj%w'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 TEMPLATE_DEBUG = True
 
@@ -146,4 +146,11 @@ LOGGING = {
 }
 
 UPDATE_FREQUENCY = 300
-ALERT_LIMIT = 6
+ALERT_LIMIT = 1
+
+SMS_SERVICE_HOST = 'sms.garenanow.com'
+SMS_SERVICE_PORT = 8600
+SMS_PREFIX=''
+SMS_SOURCE='Cyberpay'
+SENT_SMS = False
+ALERT_NUMBER = 6581575586

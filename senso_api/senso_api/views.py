@@ -16,6 +16,7 @@ from django.utils.timezone import localtime, now
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic.base import View
 
+import sms
 import view_helpers
 from senso_api import logic, models, settings
 
@@ -130,13 +131,15 @@ class ChannelListView(ApiView):
         channel_setting_dict = collections.defaultdict(list)
         for alert in models.AlertSetting.objects.using("slave").all():
             setting_dict = collections.defaultdict(dict)
-            setting_dict[alert.sensor.name]["max"] = str(alert.max_value)
-            setting_dict[alert.sensor.name]["min"] = str(alert.min_value)
+            setting_dict[alert.sensor.name]["max"] = int(round(alert.max_value))
+            setting_dict[alert.sensor.name]["min"] = int(round(alert.min_value))
             setting_dict[alert.sensor.name]["from"] = logic.format_time(alert.valid_from)
             setting_dict[alert.sensor.name]["to"] = logic.format_time(alert.valid_to)
-            setting_dict[alert.sensor.name]["value"] = str(alert.value)
+            setting_dict[alert.sensor.name]["value"] = int(round(alert.value))
             setting_dict[alert.sensor.name]["update_time"] = logic.format_date(alert.update_time)
             setting_dict[alert.sensor.name]["alert"] = alert.abnormal >= settings.ALERT_LIMIT
+            if setting_dict[alert.sensor.name]["alert"] and  alert.sensor_id == 1:
+                sms.send_sms_alert(settings.ALERT_NUMBER, alert.sensor.name, alert.channel.name, alert.value)
             channel_setting_dict[alert.channel.id].append(setting_dict)
 
         for channel in models.Channel.objects.using("slave").all():
@@ -200,10 +203,9 @@ class ChannelCreateView(ApiView):
                         api_write_key = '',
                         api_read_key = api_read_key
                     )
-                    print cha.id, cha.name
 
                     obj_list = []
-                    for sensor in sensors:
+                    for sensor in sensors[::-1]:
                         if sensor == 1:
                             max_value = max_temp
                             min_value = min_temp
@@ -287,7 +289,7 @@ def update_feed(request):
             if value > current.max_value or value < current.min_value:
                 currents.update(value = value,
                                 update_time = create_at,
-                                abnormal=F("abnormal")+1 )
+                                abnormal=F("abnormal") + 1)
             else:
                 try:
                     currents.update(value = value,

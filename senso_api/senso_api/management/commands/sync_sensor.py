@@ -1,24 +1,39 @@
 # -*- coding: utf-8 -*-
 
+import datetime
 import decimal
 import logging
+import random
 import time
-import datetime
+
+import requests
 from django.core.management.base import BaseCommand, CommandError
 from django.db.models import F
-from senso_api import models, api_helpers
-from senso_api import settings
 from django.db.utils import OperationalError
 
+from senso_api import api_helpers, models, settings
+
 logger = logging.getLogger("sync")
+
+URL = 'http://10.2.64.115/update/?key=%s&field1=%s'
 
 class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
         while True:
-            self.sync_sensor()
+            # self.sync_sensor()
+            self.update_feeds()
             time.sleep(settings.UPDATE_FREQUENCY)
+
+    def update_feeds(self):
+        for channel in models.Channel.objects.using("slave").all():
+            if channel.channel_id == 63235:
+                continue
+            temp = random.uniform(24,27)
+            temp = "%.1f" % temp
+            logger.info("update temperature for channel %s, value %s", channel.name, temp)
+            requests.get(URL % (channel.channel_id, temp))
 
     def sync_sensor(self):
         sensor_dict = {}
@@ -80,6 +95,4 @@ class Command(BaseCommand):
                 logger.info("no feed data found!")
 
             logger.info("======================")
-
-
 
