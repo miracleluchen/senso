@@ -23,6 +23,11 @@ def _send(number, text):
         logger.info(u"sms:%s %s" % (number, text))
 
 
-def send_sms_alert(number, sensor, channel, value):
-    text = 'Alert: the %s in %s is %s now.' % (sensor, channel, value)
+def send_sms_alert(number, sensor, channel, min_value, max_value, value):
+    compare = ''
+    if value > max_value:
+        compare = 'Above'
+    elif value < min_value:
+        compare = 'Below'
+    text = 'Alert: %s in %s is %s the threshold (Threshold: %s to %s, Current: %s).' % (sensor, channel, compare, min_value, max_value, value)
     _send(number, text)

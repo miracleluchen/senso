@@ -80,7 +80,7 @@ class FetchChannelFeedsView(ApiView):
             sensor_setting['name'] = channel.name
             sensor_setting['category'] = channel.category
             for sensor_data in models.AlertSetting.objects.using("slave").filter(channel=channel):
-                sensor_setting[sensor_data.sensor.name] = int(sensor_data.value) if sensor_data.value is not None else None
+                sensor_setting[sensor_data.sensor.name] = str((sensor_data.value)) if sensor_data.value is not None else None
                 sensor_setting['alert'] = sensor_data.abnormal >= settings.ALERT_LIMIT
                 if sensor_data.sensor.id == 1:
                     sensor_setting['valid_from'] = logic.format_time(sensor_data.valid_from)
@@ -131,15 +131,20 @@ class ChannelListView(ApiView):
         channel_setting_dict = collections.defaultdict(list)
         for alert in models.AlertSetting.objects.using("slave").all():
             setting_dict = collections.defaultdict(dict)
-            setting_dict[alert.sensor.name]["max"] = int(round(alert.max_value))
-            setting_dict[alert.sensor.name]["min"] = int(round(alert.min_value))
+            setting_dict[alert.sensor.name]["max"] = str(alert.max_value)
+            setting_dict[alert.sensor.name]["min"] = str((alert.min_value))
             setting_dict[alert.sensor.name]["from"] = logic.format_time(alert.valid_from)
             setting_dict[alert.sensor.name]["to"] = logic.format_time(alert.valid_to)
-            setting_dict[alert.sensor.name]["value"] = int(round(alert.value))
+            setting_dict[alert.sensor.name]["value"] = str((alert.value))
             setting_dict[alert.sensor.name]["update_time"] = logic.format_date(alert.update_time)
             setting_dict[alert.sensor.name]["alert"] = alert.abnormal >= settings.ALERT_LIMIT
-            if setting_dict[alert.sensor.name]["alert"] and  alert.sensor_id == 1:
-                sms.send_sms_alert(settings.ALERT_NUMBER, alert.sensor.name, alert.channel.name, alert.value)
+            # if setting_dict[alert.sensor.name]["alert"] and  alert.sensor_id == 1:
+                # sms.send_sms_alert(settings.ALERT_NUMBER,
+                                   # alert.sensor.name,
+                                   # alert.channel.name,
+                                   # alert.min_value,
+                                   # alert.max_value,
+                                   # alert.value)
             channel_setting_dict[alert.channel.id].append(setting_dict)
 
         for channel in models.Channel.objects.using("slave").all():
@@ -287,6 +292,14 @@ def update_feed(request):
             current = currents[0]
             create_at = localtime(now())
             if value > current.max_value or value < current.min_value:
+                if current.abnormal == 0:
+                    sms.send_sms_alert(settings.ALERT_NUMBER,
+                                   current.sensor.name,
+                                   current.channel.name,
+                                   current.min_value,
+                                   current.max_value,
+                                   value)
+
                 currents.update(value = value,
                                 update_time = create_at,
                                 abnormal=F("abnormal") + 1)
