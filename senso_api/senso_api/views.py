@@ -147,7 +147,7 @@ class ChannelListView(ApiView):
                                    # alert.value)
             channel_setting_dict[alert.channel.id].append(setting_dict)
 
-        for channel in models.Channel.objects.using("slave").all():
+        for channel in models.Channel.objects.using("slave").all().order_by("-id"):
             channel_dict = {}
             channel_dict['name'] = channel.name
             channel_dict['api_key'] = channel.api_write_key
